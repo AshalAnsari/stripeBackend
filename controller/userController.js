@@ -1,6 +1,7 @@
 const Users = require("../model/UserModel")
 const bcrypt = require("bcrypt")
 const jwt = require("jsonwebtoken")
+const Tokens = require("../model/TokenModel")
 
 const getUsers = async (req, res) => {
     try{
@@ -71,7 +72,16 @@ const loginUser = async (req, res) => {
         const doesPasswordMatch = await bcrypt.compare(password, doesUserExist.Password)
 
         if(doesPasswordMatch){
-            
+            jwt.sign({id: doesUserExist._id}, process.env.JWT_SECRET, {expiresIn:"2 days", audience:"web_app"}, async(err, token) => {
+                if(err){
+                    return res.status(400).json({success: false, Message: "User id is unavailable"})
+                }
+
+                const tokenModel = new Tokens({UserId:doesUserExist._id, Token:token})
+                await tokenModel.save()
+
+                return res.status(200).json({success: true, Message:"User signin successfull", token})
+            })
         }
     }catch(err){
         return res.status(500).json({success:false, Message: "Internal server error i.e "+err})
@@ -82,5 +92,5 @@ const loginUser = async (req, res) => {
 module.exports = {
     getUsers,
     createUser,
-
+    loginUser,
 }
